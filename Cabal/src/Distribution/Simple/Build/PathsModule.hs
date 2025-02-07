@@ -26,11 +26,16 @@ import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.Simple.Compiler
 import Distribution.Simple.LocalBuildInfo
+import Distribution.Simple.PackageIndex (allPackagesForUnitIds)
 import Distribution.Simple.Utils (shortRelativePath)
 import Distribution.System
 import Distribution.Version
 
+import qualified Data.Set as Set
 import qualified Distribution.Simple.Build.PathsModule.Z as Z
+import qualified Distribution.Types.InstalledPackageInfo as InstalledPackageInfo
+import qualified Distribution.Types.LocalBuildConfig as LocalBuildConfig
+import qualified System.FilePath as FilePath
 
 -- ------------------------------------------------------------
 
@@ -61,6 +66,7 @@ generatePathsModule pkg_descr lbi clbi =
       , Z.zDatadir = zDatadir
       , Z.zLibexecdir = zLibexecdir
       , Z.zSysconfdir = zSysconfdir
+      , Z.zDependenciesDatadirs = zDependenciesDatadirs
       }
   where
     supports_cpp = supports_language_pragma
@@ -147,6 +153,29 @@ generatePathsModule pkg_descr lbi clbi =
     flat_datadir_reloc = shortRelativePath flat_prefix flat_datadir
     flat_libexecdir_reloc = shortRelativePath flat_prefix flat_libexecdir
     flat_sysconfdir_reloc = shortRelativePath flat_prefix flat_sysconfdir
+
+    zDependenciesDatadirs :: [(PackageName, FilePath)]
+    zDependenciesDatadirs =
+      [ (packageName info, directory)
+      | info <- dependenciesPackageInfos
+      , let directory = InstalledPackageInfo.dataDir info
+      , FilePath.isAbsolute directory
+      ]
+
+    dependenciesPackageInfos =
+      allPackagesForUnitIds dependenciesUnitIds installedPackageIndex
+
+    dependenciesUnitIds =
+      Set.fromList
+        . map fst
+        . componentPackageDeps
+        $ clbi
+
+    installedPackageIndex =
+        LocalBuildConfig.installedPkgs
+          . LocalBuildConfig.componentBuildDescr
+          . localBuildDescr
+          $ lbi
 
 -- | Generates the name of the environment variable controlling the path
 -- component of interest.

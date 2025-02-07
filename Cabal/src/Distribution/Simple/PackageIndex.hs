@@ -82,6 +82,7 @@ module Distribution.Simple.PackageIndex
   , allPackagesByName
   , allPackagesBySourcePackageId
   , allPackagesBySourcePackageIdAndLibName
+  , allPackagesForUnitIds
 
     -- ** Special queries
   , brokenPackages
@@ -423,6 +424,11 @@ allPackagesBySourcePackageIdAndLibName index =
   | ((_, ln), pvers) <- Map.toList (packageIdIndex index)
   , ipkgs@(ipkg : _) <- Map.elems pvers
   ]
+
+-- | Get all packages from the index that match one of the provided `UnitId`s.
+allPackagesForUnitIds :: Set UnitId -> PackageIndex a -> [a]
+allPackagesForUnitIds unitIds (PackageIndex pids _pnames) =
+  Map.elems (Map.restrictKeys pids unitIds)
 
 --
 

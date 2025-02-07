@@ -1,7 +1,12 @@
 {- FOURMOLU_DISABLE -}
 {-# LANGUAGE DeriveGeneric #-}
+
 module Distribution.Simple.Build.PathsModule.Z (render, Z(..)) where
+
 import Distribution.ZinzaPrelude
+
+import qualified Data.List as List
+
 data Z
     = Z {zPackageName :: PackageName,
          zVersionDigits :: String,
@@ -20,9 +25,11 @@ data Z
          zDatadir :: FilePath,
          zLibexecdir :: FilePath,
          zSysconfdir :: FilePath,
+         zDependenciesDatadirs :: [(PackageName, FilePath)],
          zNot :: (Bool -> Bool),
          zManglePkgName :: (PackageName -> String)}
     deriving Generic
+
 render :: Z -> String
 render z_root = execWriter $ do
   if (zSupportsCpp z_root)
@@ -58,7 +65,7 @@ render z_root = execWriter $ do
   tell " (\n"
   tell "    version,\n"
   tell "    getBinDir, getLibDir, getDynLibDir, getDataDir, getLibexecDir,\n"
-  tell "    getDataFileName, getSysconfDir\n"
+  tell "    getDataFileName, getSysconfDir, dependencies_datadirs\n"
   tell "  ) where\n"
   tell "\n"
   if (zNot z_root (zAbsolute z_root))
@@ -110,6 +117,15 @@ render z_root = execWriter $ do
   tell "getDataFileName name = do\n"
   tell "  dir <- getDataDir\n"
   tell "  return (dir `joinFileName` name)\n"
+  tell "\n"
+  tell "dependencies_datadirs :: [(String, FilePath)]\n"
+  tell "dependencies_datadirs =\n"
+  tell "  [ "
+  tell
+    $ List.intercalate "  , "
+    $ map (\(name, directory) -> "(\"" ++ prettyShow name ++ "\", \"" ++ directory ++ "\")\n")
+    $ zDependenciesDatadirs z_root
+  tell "  ]\n"
   tell "\n"
   tell "getBinDir, getLibDir, getDynLibDir, getDataDir, getLibexecDir, getSysconfDir :: IO FilePath\n"
   tell "\n"
